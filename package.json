@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/TommyMynnSon/XRPL-Fungible-Token/issues"
   },
-  "homepage": "https://github.com/TommyMynnSon/XRPL-Fungible-Token#readme"
+  "homepage": "https://github.com/TommyMynnSon/XRPL-Fungible-Token#readme",
+  "dependencies": {
+    "xrpl": "^2.1.1"
+  }
 }
