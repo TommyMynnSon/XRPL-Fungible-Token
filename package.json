@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/TommyMynnSon/XRPL-Fungible-Token#readme",
   "dependencies": {
+    "dotenv": "^10.0.0",
     "xrpl": "^2.1.1"
   }
 }
