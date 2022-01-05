@@ -113,6 +113,37 @@ const createTrustLineFromHotToColdAddress = async (client, coldSecret, hotSecret
     }
 };
 
+const createTrustLineFromHotToHotAddress = async (client, hotSecret_1, hotSecret_2) => {
+    const hotWallet_1 = getHotWallet(client, hotSecret_1);
+    const hotWallet_2 = getHotWallet(client, hotSecret_2);
+
+    const currency_code = 'SON';
+
+    const trust_set_tx = {
+        TransactionType: 'TrustSet',
+        Account: hotWallet_1.address,
+        LimitAmount: {
+            currency: currency_code,
+            issuer: hotWallet_2.address,
+            value: '1000'
+        }
+    };
+
+    const ts_prepared = await client.autofill(trust_set_tx);
+
+    const ts_signed = hotWallet_1.sign(ts_prepared);
+
+    console.log('Creating trust line from hot address to hot address...');
+
+    const ts_result = await client.submitAndWait(ts_signed.tx_blob);
+
+    if (ts_result.result.meta.TransactionResult === 'tesSUCCESS') {
+        console.log(`Transaction succeeded: https://testnet.xrpl.org/transactions/${ts_signed.hash}`);
+    } else {
+        throw `Error sending transaction: ${ts_result.result.meta.TransactionResult}`;
+    }
+};
+
 const sendPaymentFromColdToHotAddress = async (client, coldSecret, hotSecret) => {
     const hotWallet = getHotWallet(client, hotSecret);
     const coldWallet = getColdWallet(client, coldSecret);
@@ -237,7 +268,7 @@ const queryHotWalletTrustLines = async (client, hotSecret) => {
     console.log('queryHotWalletTrustLines:', response.result);
 };
 
-const queryColdAddressBalance = async (client, coldSecret, hotSecret) => {
+const queryColdAddressBalanceFromOneHotAddress = async (client, coldSecret, hotSecret) => {
     const coldWallet = getColdWallet(client, coldSecret);
     const hotWallet = getHotWallet(client, hotSecret);
 
@@ -253,54 +284,81 @@ const queryColdAddressBalance = async (client, coldSecret, hotSecret) => {
     console.log(JSON.stringify(cold_balances.result, null, 2));
 };
 
+const queryColdAddressBalanceFromMultipleHotAddresses = async (client, coldSecret, hotSecret_1, hotSecret_2) => {
+    const coldWallet = getColdWallet(client, coldSecret);
+    const hotWallet_1 = getHotWallet(client, hotSecret_1);
+    const hotWallet_2 = getHotWallet(client, hotSecret_2);
+
+    const cold_balances = await client.request({
+        // gateway_balances method looks up the balances from the perspective of a token
+        // issuer and provides a sum of all tokens issued by a given address:
+        command: 'gateway_balances',
+        account: coldWallet.address,
+        ledger_index: 'validated',
+        hotwallet: [hotWallet_1.address, hotWallet_2.address]
+    });
+
+    console.log(JSON.stringify(cold_balances.result, null, 2));
+};
+
 const main = async () => {
     // Define the network client.
     const client = new xrpl.Client('wss://s.altnet.rippletest.net:51233');
     await client.connect();
 
-    // // Step 1) Configure issuer (cold address) settings.
+    // [ Configure issuer (cold address) settings ]
+
+    // Step 1) Configure issuer (cold address) settings.
     // await configureIssuerSettings(client, coldSecret_1);
 
-    // // Step 2) Configure hot address settings.
+    // [ Sending SON tokens from cold address to hot address with hotSecret_1 ]
+
+    // Step 1) Configure hot address settings.
     // await configureHotAddressSettings(client, hotSecret_1);
     
-    // // Step 3) Create a trust line from the hot to cold address.
+    // Step 2) Create a trust line from the hot to cold address.
     // await createTrustLineFromHotToColdAddress(client, coldSecret_1, hotSecret_1);
 
-    // // Step 4) Send payment from issuer to hot address.
+    // Step 3) Send payment from issuer to hot address.
     // await sendPaymentFromColdToHotAddress(client, coldSecret_1, hotSecret_1);
 
-    // // Queries
+    // [ Confirmation queries ]
     // await queryColdWalletDetails(client, coldSecret_1);
     // await queryHotWalletDetails(client, hotSecret_1);
     // await queryColdWalletTrustLines(client, coldSecret_1);
     // await queryHotWalletTrustLines(client, hotSecret_1);
-    // await queryColdAddressBalance(client, coldSecret_1, hotSecret_1);
+    // await queryColdAddressBalanceFromOneHotAddress(client, coldSecret_1, hotSecret_1);
 
-    // Testing if address for hotSecret_2 denies SON tokens from address for hotSecret_1
-    // if hotSecret_2 has not established a trust line to the SON Gateway (address for coldSecret_1).
-
-    // Configure hot address settings.
+    // [ Sending SON tokens from cold address to hot address with hotSecret_2 ]
+    
+    // Step 1) Configure hot address settings.
     // await configureHotAddressSettings(client, hotSecret_2);
-
-    // Send SON tokens from address for hotSecret_1 to address for hotSecret_2.
-    // Expected result: 'Error sending transaction: tecPATH_DRY'
-    // [PASSED]
-    // await sendPaymentFromHotToHotAddress(client, hotSecret_1, hotSecret_2);
-
-    // // Create a trust line from address for hotSecret_2 to address for coldSecret_1 (SON Gateway).
+    
+    // Step 2) Create a trust line from the hot to cold address.
     // await createTrustLineFromHotToColdAddress(client, coldSecret_1, hotSecret_2);
 
-    // Send SON tokens from address for hotSecret_1 to address for hotSecret_2.
-    // Expected result: 
-    // []
-    // await sendPaymentFromHotToHotAddress(client, hotSecret_1, hotSecret_2);
-
-    // await queryHotWalletTrustLines(client, hotSecret_2);
-    await queryColdAddressBalance(client, coldSecret_1, hotSecret_1);
-
+    // Step 3) Send payment from issuer to hot address.
     // await sendPaymentFromColdToHotAddress(client, coldSecret_1, hotSecret_2);
 
+    // [ Confirmation queries ]
+    // await queryColdWalletDetails(client, coldSecret_1);
+    // await queryHotWalletDetails(client, hotSecret_2);
+    // await queryColdWalletTrustLines(client, coldSecret_1);
+    // await queryHotWalletTrustLines(client, hotSecret_2);
+    // await queryColdAddressBalanceFromOneHotAddress(client, coldSecret_1, hotSecret_2);
+    // await queryColdAddressBalanceFromMultipleHotAddresses(client, coldSecret_1, hotSecret_1, hotSecret_2);
+
+    // [ Sending SON tokens from hot address with hotSecret_1 to hot address with hotSecret_2 ]
+
+    // Step 1) Create a trust line from hot address with hotSecret_1 to hot address with hotSecret_2.
+    // await createTrustLineFromHotToHotAddress(client, hotSecret_1, hotSecret_2);
+
+    // Step 2) Send payment from hot address with hotSecret_2 to hot address with hotSecret_1.
+    // await sendPaymentFromHotToHotAddress(client, hotSecret_2, hotSecret_1);
+
+    // [ Confirmation queries ]
+    // await queryHotWalletTrustLines(client, hotSecret_1);
+    // await queryHotWalletTrustLines(client, hotSecret_2);
 };
 
 main();
